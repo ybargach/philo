@@ -5,22 +5,39 @@
 # include <stdio.h>
 # include <stdlib.h>
 # include <pthread.h>
+# include <sys/time.h>
 
-typedef struct	s_philo
+typedef	struct s_philo
 {
-	int	a;
-	int	b;
-	int	*c;
+	int			id;
+	int			nbr_philo;
+	int			sleep;
+	int			eat;
+	int			think;
+	int			die;
+	int			r_fork;
+	int			l_fork;
+	long		last_time;
+	long		first_time;
+	pthread_mutex_t	*right_fork;
+	pthread_mutex_t	*left_fork;
+	pthread_t	thread;
+}		t_philo;
+
+
+typedef struct	s_data
+{
 	int	id;
-	int	left_fork;
-	int	right_fork;
-	int	philo;
-	int	phi_die;
+	int	nbr_philo;
+	int	think;
 	int	die;
 	int	eat;
 	int	sleep;
+	long	last_time;
+	long	first_time;
 	pthread_mutex_t	*fork;
-}		t_philo;
+	t_philo	*philo;
+}	t_data;
 
 
 #endif

@@ -55,77 +55,132 @@ int	is_digit(char *str)
 	return (0);
 }
 
-// void	up_forks(t_philo *arr)
-// {
-// 	arr->left_fork = arr->a;
-// 	//arr->right_fork = (arr->a + 1) % arr->philo;
-// 	pthread_mutex_lock(&arr->fork[arr->left_fork]);
-// 	//pthread_mutex_lock(&arr->fork[arr->right_fork]);
-// }
-
-// void	down_forks(t_philo *arr)
-// {
-// 	arr->left_fork = arr->a;
-// 	//arr->right_fork = (arr->a + 1) % arr->philo;
-// 	pthread_mutex_unlock(&arr->fork[arr->right_fork]);
-// 	//pthread_mutex_unlock(&arr->fork[arr->left_fork]);
-// }
-
-void	*create_thread(void *arg)
+long	ft_get_time(void)
 {
-	t_philo *arr = (t_philo *)arg;
-	//pthread_mutex_t	fork;
-	pthread_mutex_lock(&arr->fork[arr->a]);
-	//up_forks(arr);
-	// rot();
-	arr->id =  *arr->c + 1;
-	printf("%d\n", arr->id);
-	sleep(1);
-	pthread_mutex_unlock(&arr->fork[arr->a]);
-	//down_forks(arr);
-	// sleep;
-	// think;
+	struct timeval	timenow;
+	long	time;
+	gettimeofday(&timenow, NULL);
+	// printf("here    %ld\n", timenow.tv_usec);
+	time = timenow.tv_usec;
+	return (time);
+}
 
-	//free(arr->c);
+void	ft_usleep(int ms)
+{
+	long time;
+
+	time = ft_get_time();
+	usleep(ms * 900);
+	while (ft_get_time() < time + ms)
+		usleep(20);
+}
+
+void	ft_fork(t_philo *data)
+{
+	pthread_mutex_lock(data->left_fork);
+	printf("%ld : %d is take first fork\n", data->last_time, data->id);
+	pthread_mutex_lock(data->right_fork);
+	printf("%ld : %d is take second fork\n", data->last_time, data->id);
+}
+
+void	ft_eat(t_philo *data)
+{
+	printf("%ld : %d is eating\n", data->last_time, data->id);
+	ft_usleep(data->eat);
+	pthread_mutex_unlock(data->left_fork);
+	pthread_mutex_unlock(data->right_fork);
+	data->last_time = data->last_time + data->eat;
+}
+
+void	ft_sleep(t_philo *data)
+{
+	ft_usleep(data->sleep);
+	printf("%ld : %d is sleep\n", data->last_time, data->id);
+	data->last_time = data->last_time + data->eat;
+	printf("%ld : %d is thinking\n", data->last_time, data->id);
+}
+
+void	ft_die(t_philo *data)
+{
+	printf("%ld : %d is die\n", data->last_time, data->id);
+	exit(0);
+}
+
+void	*routine(void *arg)
+{
+	t_philo *data = (t_philo *)arg;
+	if (data->id % 2 == 0)
+		ft_usleep(100);
+	ft_fork(data);
+	ft_eat(data);
+	ft_sleep(data);
 	return (NULL);
 }
 
-void	before_create(int ac, char **av, t_philo *arr)
+void	ft_copy(t_data *arr, t_philo *philo)
 {
-	pthread_t	*th;
+	philo->die = arr->die;
+	philo->eat = arr->eat;
+	philo->first_time = arr->first_time;
+	philo->last_time = arr->last_time;
+	philo->nbr_philo = arr->nbr_philo;
+	philo->sleep = arr->sleep;
+}
 
-	arr->a = 0;
-	arr->b = 0;
-	arr->philo = ft_atoi(av[1]);
+void	av_atoi(t_data *arr, int ac, char **av)
+{
 	arr->die = ft_atoi(av[2]);
 	arr->eat = ft_atoi(av[3]);
 	arr->sleep = ft_atoi(av[4]);
 	if (ac == 6)
-		arr->phi_die = ft_atoi(av[5]);
-	th = malloc(arr->philo * sizeof(pthread_t));
-	arr->fork = malloc(arr->philo * sizeof(pthread_mutex_t));
-	while (arr->b < arr->philo)
+		arr->think = ft_atoi(av[5]);
+}
+
+void	before_create(int ac, char **av)
+{
+	int	a;
+	int	b;
+	t_data	*arr;
+
+	a = 0;
+	b = 0;
+	arr = (t_data *)malloc(sizeof(t_data));
+	arr->nbr_philo = ft_atoi(av[1]);
+	av_atoi(arr, ac, av);
+	arr->philo = (t_philo *)malloc(arr->nbr_philo * sizeof(t_philo));
+	arr->fork = (pthread_mutex_t *)malloc(arr->nbr_philo * sizeof(pthread_mutex_t));
+	while (b < arr->nbr_philo)
 	{
-		pthread_mutex_init(&arr->fork[arr->b], NULL);
-		arr->b++;
+		pthread_mutex_init(&arr->fork[b], NULL);
+		b++;
 	}
-	while (arr->a < arr->philo)
+	arr->first_time = ft_get_time();
+	// arr->last_time = arr->first_time;
+	ft_copy(arr, arr->philo);
+	while (a < arr->nbr_philo)
 	{
-		arr->c = malloc(sizeof(int));
-		*arr->c = arr->a;
-		pthread_create(&th[arr->a], NULL, create_thread, arr);
-		arr->a++;
+		arr->philo[a].last_time = ft_get_time() - arr->first_time;
+	// printf("%ld\n", arr->philo[a].last_time);
+	// exit(0);
+		arr->philo[a].id = a + 1;
+		arr->philo[a].left_fork = &arr->fork[a];
+		arr->philo[a].right_fork = &arr->fork[(a + 1) % arr->nbr_philo];
+		pthread_create(&arr->philo[a].thread, NULL, routine, &arr->philo[a]);
+		pthread_detach(arr->philo[a].thread);
+		a++;
 	}
 }
 
-int	check_argv(char **av, t_philo *arr)
+int	check_argv(char **av)
 {
-	arr->a = 1;
-	while (av[arr->a])
+	int	a;
+
+	a = 1;
+	while (av[a])
 	{
-		if (is_digit(av[arr->a]) == -1)
+		if (is_digit(av[a]) == -1)
 			return (1);
-		arr->a++;
+		a++;
 	}
 	return (0);
 }
@@ -138,15 +193,9 @@ int	error_argv(void)
 
 int	main(int ac, char **av)
 {
-	t_philo	*arr;
-
-	arr = (t_philo *)malloc(sizeof(t_philo));
-	if (!(ac >= 5 && ac <= 6) || check_argv(av, arr) == 1)
+	if (!(ac >= 5 && ac <= 6) || check_argv(av) == 1)
 		return (error_argv());
-	{
-	before_create(ac, av, arr);
-		//exit(0);
-	}
-	while(1);
+	before_create(ac, av);
+	sleep(1);
 	return (0);
 }

@@ -1,5 +1,5 @@
 NAME= philo
-CFLAGS= -Wall -Wextra -Werror #-fsanitize=thread
+CFLAGS= #-fsanitize=thread #-Wall -Wextra -Werror
 CC= clang
 
 SRC= philosophers.c \
